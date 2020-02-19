@@ -1,0 +1,11 @@
+version: '3'
+services:
+  web:
+    build: .
+    image: btc-rawtx-rest:latest
+    container_name: btc-rawtx-rest
+    environment:
+      - APP_DEBUG="False"
+      - APP_PORT=5000
+    ports:
+      - "5000:5000"
