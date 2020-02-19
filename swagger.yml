@@ -1,0 +1,63 @@
+swagger: "2.0"
+info:
+  description: This is the swagger file that goes with our server code
+  version: "1.0.0"
+  title: Swagger REST
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+basePath: "/"
+
+paths:
+  /payment_transactions:
+    post:
+      operationId: payment.create
+      tags:
+        - bitcoin
+      summary: Create an unsigend raw transaction
+      description: Create an unsigend raw transaction
+      parameters:
+        - name: transaction
+          in: body
+          description: Transaction to create
+          required: True
+          schema:
+            type: object
+            properties:
+              source_address:
+                type: string
+                description: The address to spend from
+              outputs:
+                type: object
+                description: A dictionary that maps addresses to amounts (in SAT)
+              fee_kb:
+                type: integer
+                description: The fee per kb in SAT
+      responses:
+        201:
+          description: Successfully created people in list
+          schema:
+            type: object
+            properties:
+              raw:
+                type: string
+                description: The unsigned raw transaction
+              inputs:
+                type: array
+                description: The inputs used
+                items:
+                  properties:
+                    txid:
+                      type: string
+                      description: The transaction id
+                    vout:
+                      type: integer
+                      description: The output number
+                    script_pub_key:
+                      type: string
+                      description: The script pub key
+                    amount:
+                      type: integer
+                      description: The amount in SAT
