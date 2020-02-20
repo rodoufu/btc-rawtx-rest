@@ -1,6 +1,6 @@
 import requests
 import os
-
+from cryptos import *
 from data import TransactionInput, TransactionOutput, TransactionOutputItem
 
 
@@ -26,7 +26,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	selected_utxo, total_selected = select_utxo(unspent, total_outputs)
 
 	# TODO Create the transaction
-	resp = TransactionOutput("1564sx", [])
+	resp = TransactionOutput(create_transaction(), [])
 
 	create_change(
 		transaction_input.outputs, total_selected, transaction_input.source_address, total_outputs,
@@ -66,3 +66,22 @@ def create_change(outputs: dict, total_selected: int, address: str, total_output
 		outputs[address] += change
 		return change
 	return 0
+
+
+def create_transaction() -> str:
+	c = Bitcoin(testnet=True)
+	priv = sha256('a big long brainwallet password')
+	pub = c.privtopub(priv)
+	addr = c.pubtoaddr(pub)
+	# inputs = c.unspent(addr)
+	inputs = [
+		{'output': '3be10a0aaff108766371fd4f4efeabc5b848c61d4aac60db6001464879f07508:0', 'value': 180000000},
+		{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+	]
+	outs = [
+		{'value': 269845600, 'address': '2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF'},
+		{'value': 100000, 'address': 'mrvHv6ggk5gFMatuJtBKAzktTU1N3MYdu2'}
+	]
+	tx = c.mktx(inputs, outs)
+	tx2 = c.sign(tx, 0, priv)
+	return str(serialize(tx))

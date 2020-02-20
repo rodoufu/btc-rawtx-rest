@@ -34,6 +34,9 @@ class TestBlockchain(unittest.TestCase):
 		self.assertEqual(blockchain.calculate_fee("2a" * 2024, 0), 0)
 		self.assertEqual(blockchain.calculate_fee("2a" * 2624, 1), 3)
 
+	def test_create_transaction(self):
+		self.assertEqual(blockchain.create_transaction(), "oi")
+
 
 if __name__ == '__main__':
 	unittest.main()

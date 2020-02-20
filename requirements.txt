@@ -2,5 +2,8 @@ Flask==1.1.1
 connexion==2.6.0
 swagger-ui==0.1.2
 requests==2.23.0
+# python-bitcoin-tools==0.2.3
+pycoin==0.90.20190728
+cryptos==1.36
 
 pytest==5.3.5
