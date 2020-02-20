@@ -2,7 +2,7 @@ import json
 
 
 class TransactionInput(object):
-	def __init__(self, source_address: str, outputs: list, fee_kb: int):
+	def __init__(self, source_address: str, outputs: dict, fee_kb: int):
 		self.source_address = source_address
 		self.outputs = outputs
 		self.fee_kb = fee_kb
@@ -26,6 +26,9 @@ class TransactionOutputItem(object):
 
 	def __json__(self):
 		return self.__dict__
+
+	def __lt__(self, other):
+		return self.amount < other.amount
 
 
 class TransactionOutput(object):

@@ -1,9 +1,10 @@
 import unittest
 import blockchain
+from data import TransactionOutputItem
 
 
-class TestGetUnspentOutputs(unittest.TestCase):
-	def test_dummy(self):
+class TestBlockchain(unittest.TestCase):
+	def test_get_unspent_outputs(self):
 		# unspent = blockchain.get_unspent_outputs("1MUz4VMYui5qY1mxUiG8BQ1Luv6tqkvaiL")
 		unspent = blockchain.get_unspent_outputs("1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr")
 		self.assertIsNotNone(unspent)
@@ -12,16 +13,26 @@ class TestGetUnspentOutputs(unittest.TestCase):
 		for utxo in unspent:
 			print(f"utxo: {utxo}")
 
-	# def test_isupper(self):
-	#     self.assertTrue('FOO'.isupper())
-	#     self.assertFalse('Foo'.isupper())
-	#
-	# def test_split(self):
-	#     s = 'hello world'
-	#     self.assertEqual(s.split(), ['hello', 'world'])
-	#     # check that s.split fails when the separator is not a string
-	#     with self.assertRaises(TypeError):
-	#         s.split(2)
+	def test_select_utxo(self):
+		unspent = [TransactionOutputItem("oi10", 0, "s10", 10), TransactionOutputItem("oi20", 1, "s20", 20)]
+		selected, _ = blockchain.select_utxo(unspent, 12)
+		self.assertEqual(len(selected), 1)
+		self.assertEqual(selected[0].amount, 20)
+
+		unspent = [
+			TransactionOutputItem("oi10", 0, "s10", 10), TransactionOutputItem("oi20", 1, "s20", 20),
+			TransactionOutputItem("oi30", 0, "s30", 30)
+		]
+		selected, _ = blockchain.select_utxo(unspent, 35)
+		self.assertEqual(len(selected), 2)
+		self.assertEqual(selected[0].amount, 30)
+		self.assertEqual(selected[1].amount, 20)
+
+	def test_calculate_fee(self):
+		self.assertEqual(blockchain.calculate_fee("2a" * 2024, 1), 2)
+		self.assertEqual(blockchain.calculate_fee("2a" * 2024, 2), 4)
+		self.assertEqual(blockchain.calculate_fee("2a" * 2024, 0), 0)
+		self.assertEqual(blockchain.calculate_fee("2a" * 2624, 1), 3)
 
 
 if __name__ == '__main__':
