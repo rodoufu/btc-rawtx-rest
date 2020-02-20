@@ -4,7 +4,7 @@ import blockchain
 
 class TestGetUnspentOutputs(unittest.TestCase):
 	def test_dummy(self):
-		unspent = blockchain.get_unspent_outputs("1MUz4VMYui5qY1mxUiG8BQ1Luv6tqkvaiL")
+		# unspent = blockchain.get_unspent_outputs("1MUz4VMYui5qY1mxUiG8BQ1Luv6tqkvaiL")
 		unspent = blockchain.get_unspent_outputs("1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr")
 		self.assertIsNotNone(unspent)
 		self.assertTrue(len(unspent) > 0)

@@ -1,7 +1,9 @@
+from blockchain import select_utxo_and_create_tx
+from data import TransactionInput
 from flask import abort
 
 
-def create(transaction: dict):
+def create(transaction: dict) -> (dict, int):
 	"""
 	This function creates a new person in the people structure
 	based on the passed in person data
@@ -9,25 +11,20 @@ def create(transaction: dict):
 	:return:        201 on success, 406 on person exists
 	"""
 
-	print(
-		f"source: {transaction['source_address']}, outputs: {transaction['outputs']}, fee_kb: {transaction['fee_kb']}")
+	transaction_input = TransactionInput(transaction['source_address'], transaction['outputs'], transaction['fee_kb'])
 
-	return \
-		{
-			"raw": "1564sx",
-			"inputs": [
-				{
-					"txid": "a",
-					"vout": 1,
-					"script_pub_key": "apub",
-					"amount": 1
-				},
-				{
-					"txid": "ab",
-					"vout": 12,
-					"script_pub_key": "apub2",
-					"amount": 2
-				}
-			]
-		}, 201
-# abort(406, f"Person with the last name {lname} already exists")
+	if len(transaction_input.source_address) == 0:
+		abort(400, "The source address cannot be empty")
+	if len(transaction_input.outputs) == 0:
+		abort(400, "The outputs cannot be empty")
+
+	resp, err = select_utxo_and_create_tx(transaction_input)
+
+	if err:
+		abort(400, err)
+
+	for i in range(len(resp.inputs)):
+		resp.inputs[i] = resp.inputs[i].__dict__
+	resp = resp.__dict__
+
+	return resp, 201
