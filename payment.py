@@ -1,7 +1,7 @@
 from flask import abort
 
 
-def create(transaction):
+def create(transaction: dict):
 	"""
 	This function creates a new person in the people structure
 	based on the passed in person data
