@@ -25,6 +25,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	:param transaction_input: Service input.
 	:return: Service output or error message.
 	"""
+	# TODO Add try / catch
 	unspent = get_unspent_outputs(transaction_input.source_address)
 	total_unspent = sum([u['value'] for u in unspent])
 	total_outputs = sum([u for u in transaction_input.outputs.values()])
@@ -37,6 +38,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	selected_utxo, total_selected = selector.select(unspent, total_outputs)
 
 	while True:
+		# TODO Add try / catch
 		raw_transaction, estimated_size = create_transaction(selected_utxo, transaction_input.outputs)
 		resp = TransactionOutput(raw_transaction, [])
 
