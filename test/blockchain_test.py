@@ -1,5 +1,6 @@
 import unittest
 import blockchain
+from data import TransactionInput
 
 
 class TestBlockchain(unittest.TestCase):
@@ -40,6 +41,20 @@ acdc0e4f48550cd783c1a73edb3dbd0750e1bd0cb03764fffffffff38aa1ff4\
 704a0ab54fdc87a08601000000000017a9147d13547544ecc1f28eda0c0766e\
 f4eb214de10458700000000"
 		self.assertEqual(raw_tx, raw_tx_resp)
+
+	def test_select_utxo_and_create_transaction_wrong_source(self):
+		transaction_input = TransactionInput('1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cA2', {}, 0)
+		transaction_output, err = blockchain.select_utxo_and_create_tx(transaction_input)
+		self.assertIsNone(transaction_output)
+		self.assertEqual(err, "There was a problem trying to get unspent outputs")
+
+	def test_select_utxo_and_create_transaction_wrong_output(self):
+		transaction_input = TransactionInput(
+			'1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr', {'1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cA2': 2}, 0
+		)
+		transaction_output, err = blockchain.select_utxo_and_create_tx(transaction_input)
+		self.assertIsNone(transaction_output)
+		self.assertEqual(err, "There was a problem trying to create the transaction")
 
 
 if __name__ == '__main__':
