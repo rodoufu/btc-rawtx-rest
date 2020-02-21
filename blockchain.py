@@ -126,5 +126,5 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 		outs += [{'value': outv, 'address': outk}]
 	tx = c.mktx(inputs, outs)
 	priv = sha256('a big long brainwallet password')
-	tx2 = c.sign(tx, 0, priv)
+	tx2 = c.signall(tx, priv)
 	return str(serialize(tx)), len(str(serialize(tx2)))
