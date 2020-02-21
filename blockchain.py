@@ -1,4 +1,5 @@
 import os
+import requests
 from cryptos import Bitcoin, sha256, serialize
 from data import TransactionInput, TransactionOutput, TransactionOutputItem
 from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst
@@ -7,15 +8,27 @@ min_for_change = int(os.environ['MIN_CHANGE']) if 'MIN_CHANGE' in os.environ els
 bitcoin_is_testnet = bool(os.environ['BITCOIN_TESTNET']) if 'BITCOIN_TESTNET' in os.environ else False
 
 
-def get_unspent_outputs(address: str) -> list:
+def get_unspent_outputs(address: str, confirmations: int = 6, limit: int = 250) -> list:
 	"""
 	Get unspent outputs for the address.
 	:param address: The address to look for.
+	:param confirmations: Minimum number of confirmations.
+	:param limit: Maximum of outputs to return.
 	:return: The unspent outputs.
 	"""
-	c = Bitcoin(testnet=bitcoin_is_testnet)
 	# I'm not worrying about using async methods cause, from what I've understood that's not the main point here.
-	return c.unspent(address)
+
+	url = f"https://blockchain.info/unspent?active={address}&limit={limit}&confirmations={confirmations}"
+	unspent = requests.get(url)
+
+	return [
+		{
+			"output": f"{o['tx_hash_big_endian']}:{o['tx_output_n']}",
+			"value": o['value'],
+			'script': o['script']
+		}
+		for o in unspent.json()['unspent_outputs']
+	]
 
 
 def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (TransactionOutput, str):
@@ -63,9 +76,9 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 			total_outputs += change
 
 		# Case it's find a smaller fee or less UTXO are used or less no change is necessary
-		if total_selected - total_outputs < fee_value or\
-					len(selected_utxo) < num_selected or\
-					len(outputs) < num_outputs:
+		if total_selected - total_outputs < fee_value or \
+				len(selected_utxo) < num_selected or \
+				len(outputs) < num_outputs:
 			print(f"Using selector: {selector.__class__.__name__}")
 			fee_value = total_selected - total_outputs
 			best_resp = resp
@@ -75,8 +88,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 
 	for utxo in selected_utxo:
 		txid, vout = utxo['output'].split(':')
-		# TODO Check the txid and the script_pub_key
-		resp.inputs += [TransactionOutputItem(txid, vout, "utxo.script_pub_key", utxo['value'])]
+		resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
 
 	return resp, None
 
@@ -88,7 +100,7 @@ def estimate_fee(estimated_size: int, fee_kb: int) -> int:
 	:param fee_kb: Price of the transaction by KiB.
 	:return: The estimated fee.
 	"""
-	return int(estimated_size / 2 * fee_kb / 1024 + 0.5)
+	return int(estimated_size / 2.0 * fee_kb / 1024.0 + 0.5)
 
 
 def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int) -> (dict, int):
@@ -126,5 +138,9 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 		outs += [{'value': outv, 'address': outk}]
 	tx = c.mktx(inputs, outs)
 	priv = sha256('a big long brainwallet password')
-	tx2 = c.signall(tx, priv)
-	return str(serialize(tx)), len(str(serialize(tx2)))
+	# tx2 = c.signall(tx, priv)
+	tx_serialize = serialize(tx)
+	tx2 = tx.copy()
+	for i in range(len(inputs)):
+		tx2 = c.sign(tx2, i, priv)
+	return str(tx_serialize), len(str(serialize(tx2)))
