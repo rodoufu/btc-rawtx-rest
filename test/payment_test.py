@@ -6,7 +6,7 @@ class TestPayment(unittest.TestCase):
 	def test_create(self):
 		transaction = {
 			"source_address": "1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr",
-			"outputs": {"1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cA2": 1},
+			"outputs": {"1CK6KHY6MHgYvmRQ4PAafKYDrg1ejbH1cE": 1},
 			"fee_kb": 0
 		}
 		created_transaction, http_code = payment.create(transaction)
