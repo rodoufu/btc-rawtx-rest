@@ -40,13 +40,10 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])
-
 		if total_unspent < total_outputs:
 			return None, "The output cannot be greater than the input"
 
 		selected_utxo, total_selected = selector.select(unspent, total_outputs)
-		if len(selected_utxo) == 0:
-			selected_utxo, total_selected = selector.select(unspent, total_outputs)
 
 		while True:
 			try:

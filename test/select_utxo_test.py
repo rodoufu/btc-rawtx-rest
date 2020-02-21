@@ -130,3 +130,7 @@ class TestSelectUtxo(unittest.TestCase):
 		self.assertEqual(len(selected), 2)
 		self.assertEqual(selected[0]['value'], 40)
 		self.assertEqual(selected[1]['value'], 20)
+
+
+if __name__ == '__main__':
+	unittest.main()

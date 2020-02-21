@@ -1,6 +1,5 @@
 import unittest
 import blockchain
-from select_utxo import BiggerFirst, SmallerFirst
 
 
 class TestBlockchain(unittest.TestCase):
