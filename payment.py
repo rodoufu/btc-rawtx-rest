@@ -5,10 +5,9 @@ from flask import abort
 
 def create(transaction: dict) -> (dict, int):
 	"""
-	This function creates a new person in the people structure
-	based on the passed in person data
-	:param transaction:  person to create in people structure
-	:return:        201 on success, 406 on person exists
+	This function creates a new transaction.
+	:param transaction: The information for the transaction.
+	:return: 201 on success, 400 if an error occurs.
 	"""
 
 	transaction_input = TransactionInput(transaction['source_address'], transaction['outputs'], transaction['fee_kb'])

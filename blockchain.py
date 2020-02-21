@@ -8,12 +8,23 @@ bitcoin_is_testnet = bool(os.environ['BITCOIN_TESTNET']) if 'BITCOIN_TESTNET' in
 
 
 def get_unspent_outputs(address: str) -> list:
+	"""
+	Get unspent outputs for the address.
+	:param address: The address to look for.
+	:return: The unspent outputs.
+	"""
 	c = Bitcoin(testnet=bitcoin_is_testnet)
 	# I'm not worrying about using async methods cause, from what I've understood that's not the main point here.
 	return c.unspent(address)
 
 
 def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (TransactionOutput, str):
+	"""
+	Selects the UTXO and creates the transaction.
+	It also estimates the fees and add the change, when it is necessary.
+	:param transaction_input: Service input.
+	:return: Service output or error message.
+	"""
 	unspent = get_unspent_outputs(transaction_input.source_address)
 	total_unspent = sum([u['value'] for u in unspent])
 	total_outputs = sum([u for u in transaction_input.outputs.values()])
@@ -46,10 +57,26 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 
 
 def calculate_fee(estimated_size: int, fee_kb: int) -> int:
+	"""
+	Calculate fee based in the transaction size and the price per KiB.
+	:param estimated_size: Estimated size for the transaction.
+	:param fee_kb: Price of the transaction by KiB.
+	:return: The estimated fee.
+	"""
 	return int(estimated_size / 2 * fee_kb / 1024 + 0.5)
 
 
 def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int):
+	"""
+	Identify the change and create if if necessary.
+	Change the outputs adding the change.
+	:param outputs: Dict with the outputs.
+	:param total_selected: Sum of the selected UTXO.
+	:param address: Address to add the change.
+	:param total_outputs: Total to send in the transaction.
+	:param fees: Value for fees.
+	:return: The value of the change.
+	"""
 	change = total_selected - total_outputs - fees
 	if change > min_for_change:
 		if address not in outputs:
@@ -60,16 +87,15 @@ def create_change(outputs: dict, total_selected: int, address: str, total_output
 
 
 def create_transaction(inputs: list, outputs: dict) -> (str, int):
+	"""
+	Create a Bitcoin transaction.
+	It uses a simple wallet to sign the transaction and estimate the size of the final transaction.
+	:param inputs: Inputs for the transaction.
+	:param outputs: Outputs for the transaction.
+	:return: The serialized not signed transaction and the estimated size.
+	"""
 	c = Bitcoin(testnet=bitcoin_is_testnet)
 	priv = sha256('a big long brainwallet password')
-	# inputs = [
-	# 	{'output': '3be10a0aaff108766371fd4f4efeabc5b848c61d4aac60db6001464879f07508:0', 'value': 180000000},
-	# 	{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
-	# ]
-	# outs = [
-	# 	{'value': 269845600, 'address': '2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF'},
-	# 	{'value': 100000, 'address': 'mrvHv6ggk5gFMatuJtBKAzktTU1N3MYdu2'}
-	# ]
 	outs = []
 	for outk, outv in outputs.items():
 		outs += [{'value': outv, 'address': outk}]
