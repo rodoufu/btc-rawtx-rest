@@ -1,5 +1,5 @@
 import unittest
-from select_utxo import BiggerFirst, SmallerFirst, FirstFit, BestFit
+from select_utxo import BiggerFirst, SmallerFirst, FirstFit, BestFit, SelectUtxo
 
 
 class TestSelectUtxo(unittest.TestCase):
@@ -14,6 +14,11 @@ class TestSelectUtxo(unittest.TestCase):
 			{'output': 'oi40:0', 'value': 40}, {'output': 'oi10:0', 'value': 10},
 			{'output': 'oi30:0', 'value': 30}, {'output': 'oi20:1', 'value': 20}
 		]
+
+	def test_select_utxo(self):
+		selector = SelectUtxo()
+		unspent = self.unspent_10_20
+		self.assertRaises(NotImplementedError, selector.select, unspent, 12)
 
 	def test_bigger_first(self):
 		selector = BiggerFirst()

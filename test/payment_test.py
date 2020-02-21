@@ -7,7 +7,7 @@ class TestPayment(unittest.TestCase):
 		transaction = {
 			"source_address": "1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr",
 			"outputs": {"1CK6KHY6MHgYvmRQ4PAafKYDrg1ejbH1cE": 1},
-			"fee_kb": 0
+			"fee_kb": int(10*1e3)
 		}
 		created_transaction, http_code = payment.create(transaction)
 		self.assertEqual(http_code, 201)

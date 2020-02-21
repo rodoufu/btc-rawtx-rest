@@ -14,10 +14,10 @@ class TestBlockchain(unittest.TestCase):
 			print(f"utxo: {utxo}")
 
 	def test_calculate_fee(self):
-		self.assertEqual(blockchain.calculate_fee(len("2a" * 2024), 1), 2)
-		self.assertEqual(blockchain.calculate_fee(len("2a" * 2024), 2), 4)
-		self.assertEqual(blockchain.calculate_fee(len("2a" * 2024), 0), 0)
-		self.assertEqual(blockchain.calculate_fee(len("2a" * 2624), 1), 3)
+		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 1), 2)
+		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 2), 4)
+		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 0), 0)
+		self.assertEqual(blockchain.estimate_fee(len("2a" * 2624), 1), 3)
 
 	def test_create_transaction(self):
 		inputs = [

@@ -1,7 +1,7 @@
 import os
 from cryptos import Bitcoin, sha256, serialize
 from data import TransactionInput, TransactionOutput, TransactionOutputItem
-from select_utxo import BiggerFirst
+from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst
 
 min_for_change = int(os.environ['MIN_CHANGE']) if 'MIN_CHANGE' in os.environ else 5430
 bitcoin_is_testnet = bool(os.environ['BITCOIN_TESTNET']) if 'BITCOIN_TESTNET' in os.environ else False
@@ -25,30 +25,56 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	:param transaction_input: Service input.
 	:return: Service output or error message.
 	"""
-	# TODO Add try / catch
-	unspent = get_unspent_outputs(transaction_input.source_address)
+	try:
+		unspent = get_unspent_outputs(transaction_input.source_address)
+	except Exception as e:
+		print(f"There was a problem trying to get unspent outputs: {e}")
+		return None, "There was a problem trying to get unspent outputs"
+
 	total_unspent = sum([u['value'] for u in unspent])
-	total_outputs = sum([u for u in transaction_input.outputs.values()])
 
-	if total_unspent < total_outputs:
-		return None, "The output cannot be greater than the input"
+	fee_value = total_unspent
+	best_resp = None
+	num_selected = len(unspent)
+	num_outputs = len(transaction_input.outputs)
+	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
+		outputs = dict(transaction_input.outputs)
+		total_outputs = sum([u for u in outputs.values()])
 
-	# TODO Change it to a interface so we can select between implementations
-	selector = BiggerFirst()
-	selected_utxo, total_selected = selector.select(unspent, total_outputs)
+		if total_unspent < total_outputs:
+			return None, "The output cannot be greater than the input"
 
-	while True:
-		# TODO Add try / catch
-		raw_transaction, estimated_size = create_transaction(selected_utxo, transaction_input.outputs)
-		resp = TransactionOutput(raw_transaction, [])
+		selected_utxo, total_selected = selector.select(unspent, total_outputs)
+		if len(selected_utxo) == 0:
+			selected_utxo, total_selected = selector.select(unspent, total_outputs)
 
-		change = create_change(
-			transaction_input.outputs, total_selected, transaction_input.source_address, total_outputs,
-			calculate_fee(estimated_size, transaction_input.fee_kb)
-		)
-		if change == 0:
-			break
-		total_outputs += change
+		while True:
+			try:
+				raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
+			except Exception as e:
+				print(f"There was a problem trying to create the transaction: {e}")
+				return None, "There was a problem trying to create the transaction"
+
+			resp = TransactionOutput(raw_transaction, [])
+
+			outputs, change = create_change(
+				outputs, total_selected, transaction_input.source_address, total_outputs,
+				estimate_fee(estimated_size, transaction_input.fee_kb)
+			)
+			if change == 0:
+				break
+			total_outputs += change
+
+		# Case it's find a smaller fee or less UTXO are used or less no change is necessary
+		if total_selected - total_outputs < fee_value or\
+					len(selected_utxo) < num_selected or\
+					len(outputs) < num_outputs:
+			print(f"Using selector: {selector.__class__.__name__}")
+			fee_value = total_selected - total_outputs
+			best_resp = resp
+			num_selected = len(selected_utxo)
+			num_outputs = len(outputs)
+	resp = best_resp
 
 	for utxo in selected_utxo:
 		txid, vout = utxo['output'].split(':')
@@ -58,7 +84,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	return resp, None
 
 
-def calculate_fee(estimated_size: int, fee_kb: int) -> int:
+def estimate_fee(estimated_size: int, fee_kb: int) -> int:
 	"""
 	Calculate fee based in the transaction size and the price per KiB.
 	:param estimated_size: Estimated size for the transaction.
@@ -68,7 +94,7 @@ def calculate_fee(estimated_size: int, fee_kb: int) -> int:
 	return int(estimated_size / 2 * fee_kb / 1024 + 0.5)
 
 
-def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int):
+def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int) -> (dict, int):
 	"""
 	Identify the change and create if if necessary.
 	Change the outputs adding the change.
@@ -81,11 +107,12 @@ def create_change(outputs: dict, total_selected: int, address: str, total_output
 	"""
 	change = total_selected - total_outputs - fees
 	if change > min_for_change:
+		outputs = dict(outputs)
 		if address not in outputs:
 			outputs[address] = 0
 		outputs[address] += change
-		return change
-	return 0
+		return outputs, change
+	return outputs, 0
 
 
 def create_transaction(inputs: list, outputs: dict) -> (str, int):
@@ -97,10 +124,10 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 	:return: The serialized not signed transaction and the estimated size.
 	"""
 	c = Bitcoin(testnet=bitcoin_is_testnet)
-	priv = sha256('a big long brainwallet password')
 	outs = []
 	for outk, outv in outputs.items():
 		outs += [{'value': outv, 'address': outk}]
 	tx = c.mktx(inputs, outs)
+	priv = sha256('a big long brainwallet password')
 	tx2 = c.sign(tx, 0, priv)
 	return str(serialize(tx)), len(str(serialize(tx2)))
