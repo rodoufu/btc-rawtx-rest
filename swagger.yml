@@ -1,8 +1,8 @@
 swagger: "2.0"
 info:
-  description: This is the swagger file that goes with our server code
+  description: Bitcoin payment REST service.
   version: "1.0.0"
-  title: Swagger REST
+  title: Bitcoin payment REST
 consumes:
   - "application/json"
 produces:
@@ -21,7 +21,7 @@ paths:
       parameters:
         - name: transaction
           in: body
-          description: Transaction to create
+          description: Information about the transaction to create
           required: True
           schema:
             type: object
@@ -37,13 +37,13 @@ paths:
                 description: The fee per kb in SAT
       responses:
         201:
-          description: Successfully created people in list
+          description: Successfully created unsigned raw transaction and list of UTXO used.
           schema:
             type: object
             properties:
               raw:
                 type: string
-                description: The unsigned raw transaction
+                description: The unsigned unsigned raw transaction.
               inputs:
                 type: array
                 description: The inputs used
