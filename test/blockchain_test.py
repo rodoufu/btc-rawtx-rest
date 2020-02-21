@@ -13,34 +13,6 @@ class TestBlockchain(unittest.TestCase):
 		for utxo in unspent:
 			print(f"utxo: {utxo}")
 
-	def test_select_utxo(self):
-		selector = BiggerFirst()
-		unspent = [{'output': 'oi10:0', 'value': 10}, {'output': 'oi20:1', 'value': 20}]
-		selected, _ = selector.select(unspent, 12)
-		self.assertEqual(len(selected), 1)
-		self.assertEqual(selected[0]['value'], 20)
-		selector = SmallerFirst()
-		selected, _ = selector.select(unspent, 12)
-		self.assertEqual(len(selected), 2)
-		self.assertEqual(selected[0]['value'], 10)
-		self.assertEqual(selected[1]['value'], 20)
-
-		unspent = [
-			{'output': 'oi10:0', 'value': 10}, {'output': 'oi20:1', 'value': 20},
-			{'output': 'oi30:0', 'value': 30}
-		]
-		selector = BiggerFirst()
-		selected, _ = selector.select(unspent, 35)
-		self.assertEqual(len(selected), 2)
-		self.assertEqual(selected[0]['value'], 30)
-		self.assertEqual(selected[1]['value'], 20)
-		selector = SmallerFirst()
-		selected, _ = selector.select(unspent, 35)
-		self.assertEqual(len(selected), 3)
-		self.assertEqual(selected[0]['value'], 10)
-		self.assertEqual(selected[1]['value'], 20)
-		self.assertEqual(selected[2]['value'], 30)
-
 	def test_calculate_fee(self):
 		self.assertEqual(blockchain.calculate_fee(len("2a" * 2024), 1), 2)
 		self.assertEqual(blockchain.calculate_fee(len("2a" * 2024), 2), 4)
