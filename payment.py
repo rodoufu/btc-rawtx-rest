@@ -17,7 +17,7 @@ def create(transaction: dict) -> (dict, int):
 		len(transaction['outputs']) == 0:
 		abort(400, "The outputs cannot be empty")
 	if 'fee_kb' not in transaction or transaction['fee_kb'] is None:
-		abort(400, "The outputs cannot be empty")
+		abort(400, "The fee per kb cannot be empty")
 
 	transaction_input = TransactionInput(transaction['source_address'], transaction['outputs'], transaction['fee_kb'])
 

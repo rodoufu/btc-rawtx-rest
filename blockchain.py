@@ -50,6 +50,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	best_resp = None
 	num_selected = len(unspent)
 	num_outputs = len(transaction_input.outputs)
+	best_selected_utxo = None
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])
@@ -71,6 +72,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 				outputs, total_selected, transaction_input.source_address, total_outputs,
 				estimate_fee(estimated_size, transaction_input.fee_kb)
 			)
+			# If a change was added then it needs to create the transaction again
 			if change == 0:
 				break
 			total_outputs += change
@@ -84,13 +86,13 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 			best_resp = resp
 			num_selected = len(selected_utxo)
 			num_outputs = len(outputs)
-	resp = best_resp
+			best_selected_utxo = selected_utxo
 
-	for utxo in selected_utxo:
+	for utxo in best_selected_utxo:
 		txid, vout = utxo['output'].split(':')
-		resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
+		best_resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
 
-	return resp, None
+	return best_resp, None
 
 
 def estimate_fee(estimated_size: int, fee_kb: int) -> int:
@@ -138,7 +140,6 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 		outs += [{'value': outv, 'address': outk}]
 	tx = c.mktx(inputs, outs)
 	priv = sha256('a big long brainwallet password')
-	# tx2 = c.signall(tx, priv)
 	tx_serialize = serialize(tx)
 	tx2 = tx.copy()
 	for i in range(len(inputs)):
