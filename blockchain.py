@@ -16,9 +16,8 @@ def get_unspent_outputs(address: str, confirmations: int = 6, limit: int = 250) 
 	:param limit: Maximum of outputs to return.
 	:return: The unspent outputs.
 	"""
-	# I'm not worrying about using async methods cause, from what I've understood that's not the main point here.
-
 	url = f"https://blockchain.info/unspent?active={address}&limit={limit}&confirmations={confirmations}"
+	# I'm not worrying about using async methods cause, from what I've understood that's not the main point here.
 	unspent = requests.get(url)
 
 	return [
@@ -51,6 +50,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	num_selected = len(unspent)
 	num_outputs = len(transaction_input.outputs)
 	best_selected_utxo = None
+	# Checks which selector gives the best results in terms of lower fees
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])

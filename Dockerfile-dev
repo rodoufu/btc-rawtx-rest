@@ -1,10 +1,19 @@
-FROM python:3.7.6-alpine
+FROM python:3.7.6-alpine as build
 MAINTAINER Rodolfo Araujo <rodoufu@gmail.com>
 
 RUN mkdir app
 COPY requirements.txt *.py swagger.yml /app/
 RUN pip3 install -r /app/requirements.txt \
     && pip3 install connexion[swagger-ui]
+
+# Running the tests
+FROM build
+RUN mkdir app/test
+COPY test/*.py /app/test/
+RUN cd app \
+    && python -m unittest discover -s test -p '*_test.py'
+
+FROM build
 
 WORKDIR /app
 ENTRYPOINT ["python3"]

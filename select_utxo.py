@@ -62,8 +62,11 @@ class BestFit(SelectUtxo):
 					bag[new_value] = bag[bagk] + [utxo]
 			# It's going to override when it's possible to find it using only one UTXO
 			bag[utxo['value']] = [utxo]
+
+		# Only the cases where the value found is bigger thant the value required for the outputs are filtered
 		keys = sorted([v for v in bag.keys() if v > value])
 
+		# Select the option that selects less inputs
 		used = len(unspent)
 		for k in keys:
 			v = bag[k]
