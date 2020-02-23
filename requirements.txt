@@ -3,6 +3,5 @@ connexion==2.6.0
 swagger-ui==0.1.2
 requests==2.23.0
 cryptos==1.36
-gevent==1.4.0
 
 pytest==5.3.5
