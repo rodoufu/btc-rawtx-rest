@@ -54,30 +54,40 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])
-		if total_unspent < total_outputs:
+
+		# Selecting UTXO without fee just to estimate the transaction size
+		selected_utxo, _ = selector.select(unspent, total_outputs)
+		estimated_size = guess_transaction_size(selected_utxo, outputs)
+		estimated_fee = estimate_fee(estimated_size, transaction_input.fee_kb)
+
+		if total_unspent < total_outputs + estimated_fee:
 			return None, "The output cannot be greater than the input"
 
-		selected_utxo, total_selected = selector.select(unspent, total_outputs)
+		selected_utxo, total_selected = selector.select(unspent, total_outputs + estimated_fee)
+		# Create transaction and calculate the fee
+		try:
+			raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
+		except Exception as e:
+			print(f"There was a problem trying to create the transaction: {e}")
+			return None, "There was a problem trying to create the transaction"
+		estimated_fee = estimate_fee(estimated_size, transaction_input.fee_kb)
 
-		while True:
+		outputs, change = create_change(
+			outputs, total_selected, transaction_input.source_address, total_outputs,
+			estimated_fee
+		)
+		total_outputs += change
+		# If a change was added then it needs to create the transaction again
+		if change != 0:
 			try:
-				raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
+				raw_transaction, _ = create_transaction(selected_utxo, outputs)
 			except Exception as e:
 				print(f"There was a problem trying to create the transaction: {e}")
 				return None, "There was a problem trying to create the transaction"
 
-			resp = TransactionOutput(raw_transaction, [])
+		resp = TransactionOutput(raw_transaction, [])
 
-			outputs, change = create_change(
-				outputs, total_selected, transaction_input.source_address, total_outputs,
-				estimate_fee(estimated_size, transaction_input.fee_kb)
-			)
-			# If a change was added then it needs to create the transaction again
-			if change == 0:
-				break
-			total_outputs += change
-
-		# Case it's find a smaller fee or less UTXO are used or less no change is necessary
+		# Case it's found a smaller fee or less UTXO are used or less no change is necessary
 		if total_selected - total_outputs < fee_value or \
 				len(selected_utxo) < num_selected or \
 				len(outputs) < num_outputs:
@@ -102,7 +112,7 @@ def estimate_fee(estimated_size: int, fee_kb: int) -> int:
 	:param fee_kb: Price of the transaction by KiB.
 	:return: The estimated fee.
 	"""
-	return int(estimated_size / 2.0 * fee_kb / 1024.0 + 0.5)
+	return int(estimated_size * fee_kb / 1024.0 + 0.5)
 
 
 def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int) -> (dict, int):
@@ -132,16 +142,36 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 	It uses a simple wallet to sign the transaction and estimate the size of the final transaction.
 	:param inputs: Inputs for the transaction.
 	:param outputs: Outputs for the transaction.
-	:return: The serialized not signed transaction and the estimated size.
+	:return: The serialized not signed transaction and the estimated size in bytes.
 	"""
 	c = Bitcoin(testnet=bitcoin_is_testnet)
 	outs = []
 	for outk, outv in outputs.items():
 		outs += [{'value': outv, 'address': outk}]
 	tx = c.mktx(inputs, outs)
-	priv = sha256('a big long brainwallet password')
 	tx_serialize = serialize(tx)
-	tx2 = tx.copy()
+
+	# Signing each input to predict the transaction size
+	priv = sha256('a big long brainwallet password')
+	tx_signed = tx.copy()
 	for i in range(len(inputs)):
-		tx2 = c.sign(tx2, i, priv)
-	return str(tx_serialize), len(str(serialize(tx2)))
+		tx_signed = c.sign(tx_signed, i, priv)
+
+	# The serialization uses one char per nibble so in order the get the number of bytes it's necessary to
+	# divide the size of the string serialization by 2
+	return str(tx_serialize), len(str(serialize(tx_signed))) // 2
+
+
+def guess_transaction_size(inputs: list, outputs: dict) -> (str, int):
+	"""
+	Guess the transaction size based in the number of inputs and outputs.
+	https://en.bitcoin.it/wiki/Protocol_documentation#tx
+	Usually the transaction is composed of:
+	- 180 bytes for each "pay to address" input;
+	- 34 bytes (32 + maybe 2 more bytes) for each output;
+	- 11 fixed bytes (10 + maybe 1 more).
+	:param inputs: List of inputs.
+	:param outputs: List of outputs.
+	:return: A guess for the expected size of the transaction in bytes.
+	"""
+	return 11 + 180 * len(inputs) + 34 * len(outputs)

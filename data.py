@@ -5,6 +5,7 @@ class TransactionInput(object):
 	"""
 	Transaction input for the service.
 	"""
+
 	def __init__(self, source_address: str, outputs: dict, fee_kb: int):
 		self.source_address = source_address
 		self.outputs = outputs
@@ -21,6 +22,7 @@ class TransactionOutputItem(object):
 	"""
 	Item in the transaction output.
 	"""
+
 	def __init__(self, txid: str, vout: int, script_pub_key: str, amount: int):
 		self.txid = txid
 		self.vout = vout
@@ -41,6 +43,7 @@ class TransactionOutput(object):
 	"""
 	Transaction output for the service.
 	"""
+
 	def __init__(self, raw: str, inputs: list):
 		self.raw = raw
 		self.inputs = inputs

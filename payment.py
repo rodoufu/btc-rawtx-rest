@@ -11,10 +11,10 @@ def create(transaction: dict) -> (dict, int):
 	"""
 
 	if 'source_address' not in transaction or \
-		transaction['source_address'] is None or len(transaction['source_address']) == 0:
+			transaction['source_address'] is None or len(transaction['source_address']) == 0:
 		abort(400, "The source address cannot be empty")
 	if 'outputs' not in transaction or transaction['outputs'] is None or \
-		len(transaction['outputs']) == 0:
+			len(transaction['outputs']) == 0:
 		abort(400, "The outputs cannot be empty")
 	if 'fee_kb' not in transaction or transaction['fee_kb'] is None:
 		abort(400, "The fee per kb cannot be empty")

@@ -5,19 +5,19 @@ from data import TransactionInput
 
 class TestBlockchain(unittest.TestCase):
 	def test_get_unspent_outputs(self):
-		# unspent = blockchain.get_unspent_outputs("1MUz4VMYui5qY1mxUiG8BQ1Luv6tqkvaiL")
 		unspent = blockchain.get_unspent_outputs("1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cAr")
 		self.assertIsNotNone(unspent)
 		self.assertTrue(len(unspent) > 0)
-		print(f"unspent({len(unspent)}): {unspent}")
-		for utxo in unspent:
-			print(f"utxo: {utxo}")
+
+		unspent = blockchain.get_unspent_outputs("1MUz4VMYui5qY1mxUiG8BQ1Luv6tqkvaiL")
+		self.assertIsNotNone(unspent)
+		self.assertTrue(len(unspent) > 0)
 
 	def test_calculate_fee(self):
-		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 1), 2)
-		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 2), 4)
-		self.assertEqual(blockchain.estimate_fee(len("2a" * 2024), 0), 0)
-		self.assertEqual(blockchain.estimate_fee(len("2a" * 2624), 1), 3)
+		self.assertEqual(blockchain.estimate_fee(2024, 1), 2)
+		self.assertEqual(blockchain.estimate_fee(2024, 2), 4)
+		self.assertEqual(blockchain.estimate_fee(2024, 0), 0)
+		self.assertEqual(blockchain.estimate_fee(2624, 1), 3)
 
 	def test_create_transaction(self):
 		inputs = [
@@ -36,6 +36,59 @@ class TestBlockchain(unittest.TestCase):
 00017a914a9974100aeee974a20cda9a2f545704a0ab54fdc87a08601000000\
 000017a9147d13547544ecc1f28eda0c0766ef4eb214de10458700000000"
 		self.assertEqual(raw_tx, raw_tx_resp)
+
+	def test_create_transaction_size(self):
+		inputs = [
+			{'output': '3be10a0aaff108766371fd4f4efeabc5b848c61d4aac60db6001464879f07508:0', 'value': 180000000},
+			{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+		]
+		outs = {
+			'2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF': 269845600,
+			'mrvHv6ggk5gFMatuJtBKAzktTU1N3MYdu2': 100000
+		}
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 433)
+
+		inputs = [
+			{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+		]
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 253)
+
+		inputs = [
+			{'output': '3be10a0aaff108766371fd4f4efeabc5b848c61d4aac60db6001464879f07508:0', 'value': 180000000},
+			{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+		]
+		outs = {
+			'mrvHv6ggk5gFMatuJtBKAzktTU1N3MYdu2': 100000
+		}
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 402)
+
+		inputs = [
+			{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+		]
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 221)
+
+		inputs = []
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 42)
+
+		inputs = [
+			{'output': '51ce9804e1a4fd3067416eb5052b9930fed7fdd9857067b47d935d69f41faa38:0', 'value': 90000000}
+		]
+		outs = {}
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 189)
+
+		inputs = []
+		outs = {
+			'2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF': 269845600,
+			'mrvHv6ggk5gFMatuJtBKAzktTU1N3MYdu2': 100000
+		}
+		_, tx_size = blockchain.create_transaction(inputs, outs)
+		self.assertEqual(tx_size, 74)
 
 	def test_select_utxo_and_create_transaction_wrong_source(self):
 		transaction_input = TransactionInput('1DAXdwNNd4KEhZfGJYanYaVVaUz1XY2cA2', {}, 0)
