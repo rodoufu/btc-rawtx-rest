@@ -1,8 +1,8 @@
 import os
 import requests
 from cryptos import Bitcoin, sha256, serialize
-from data import TransactionInput, TransactionOutput, TransactionOutputItem
-from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst
+from data import TransactionInput, TransactionOutput, TransactionOutputItem, SelectedInfo
+from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst, SelectUtxo
 
 min_for_change = int(os.environ['MIN_CHANGE']) if 'MIN_CHANGE' in os.environ else 5430
 bitcoin_is_testnet = bool(os.environ['BITCOIN_TESTNET']) if 'BITCOIN_TESTNET' in os.environ else False
@@ -45,64 +45,78 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 
 	total_unspent = sum([u['value'] for u in unspent])
 
-	fee_value = total_unspent
-	best_resp = None
-	num_selected = len(unspent)
-	num_outputs = len(transaction_input.outputs)
-	best_selected_utxo = None
+	best_selected = SelectedInfo(total_unspent, "", list(unspent), dict(transaction_input.outputs))
 	# Checks which selector gives the best results in terms of lower fees
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])
 
-		# Selecting UTXO without fee just to estimate the transaction size
-		selected_utxo, _ = selector.select(unspent, total_outputs)
-		estimated_size = guess_transaction_size(selected_utxo, outputs)
-		estimated_fee = estimate_fee(estimated_size, transaction_input.fee_kb)
+		selected, err = create_transaction_with_change(
+			selector, outputs, total_outputs, unspent, total_unspent,
+			transaction_input.source_address, transaction_input.fee_kb)
 
-		if total_unspent < total_outputs + estimated_fee:
-			return None, "The output cannot be greater than the input"
+		if err is not None:
+			return None, err
 
-		selected_utxo, total_selected = selector.select(unspent, total_outputs + estimated_fee)
-		# Create transaction and calculate the fee
+		# Case it's found a smaller fee or less UTXO are used or less no change is necessary
+		best_selected = min(best_selected, selected)
+
+	if len(best_selected.selected) == 0:
+		return None, "It was unable the select the UTXO for creating the transaction"
+
+	resp = TransactionOutput(best_selected.raw, [])
+	for utxo in best_selected.selected:
+		txid, vout = utxo['output'].split(':')
+		resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
+
+	return resp, None
+
+
+def create_transaction_with_change(
+		selector: SelectUtxo, outputs: dict, total_outputs: int, unspent: list, total_unspent: int,
+		source_address: str, fee_kb: int) -> (SelectedInfo, str):
+	"""
+	Create a transaction adding the change if necessary.
+	:param selector: The selector used to choose the UTXO.
+	:param outputs: The outputs for the transaction.
+	:param total_outputs: Sum of the values for the outputs.
+	:param unspent: The UTXO used for the transaction.
+	:param total_unspent: Sum of the values from the UTXO.
+	:param source_address: The source address.
+	:param fee_kb: The fee by kb.
+	:return: The transaction, the selected UTXO and the used fee.
+	"""
+	# Selecting UTXO without fee just to estimate the transaction size
+	selected_utxo, _ = selector.select(unspent, total_outputs)
+	estimated_size = guess_transaction_size(selected_utxo, outputs)
+	estimated_fee = estimate_fee(estimated_size, fee_kb)
+
+	if total_unspent < total_outputs + estimated_fee:
+		return None, "The output cannot be greater than the input"
+
+	selected_utxo, total_selected = selector.select(unspent, total_outputs + estimated_fee)
+	# Create transaction and calculate the fee
+	try:
+		raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
+	except Exception as e:
+		print(f"There was a problem trying to create the transaction: {e}")
+		return None, "There was a problem trying to create the transaction"
+	estimated_fee = estimate_fee(estimated_size, fee_kb)
+
+	outputs, change = create_change(
+		outputs, total_selected, source_address, total_outputs, estimated_fee
+	)
+	total_outputs += change
+	# If a change was added then it needs to create the transaction again
+	if change != 0:
 		try:
-			raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
+			raw_transaction, _ = create_transaction(selected_utxo, outputs)
 		except Exception as e:
 			print(f"There was a problem trying to create the transaction: {e}")
 			return None, "There was a problem trying to create the transaction"
-		estimated_fee = estimate_fee(estimated_size, transaction_input.fee_kb)
 
-		outputs, change = create_change(
-			outputs, total_selected, transaction_input.source_address, total_outputs,
-			estimated_fee
-		)
-		total_outputs += change
-		# If a change was added then it needs to create the transaction again
-		if change != 0:
-			try:
-				raw_transaction, _ = create_transaction(selected_utxo, outputs)
-			except Exception as e:
-				print(f"There was a problem trying to create the transaction: {e}")
-				return None, "There was a problem trying to create the transaction"
-
-		resp = TransactionOutput(raw_transaction, [])
-
-		# Case it's found a smaller fee or less UTXO are used or less no change is necessary
-		if total_selected - total_outputs < fee_value or \
-				len(selected_utxo) < num_selected or \
-				len(outputs) < num_outputs:
-			print(f"Using selector: {selector.__class__.__name__}")
-			fee_value = total_selected - total_outputs
-			best_resp = resp
-			num_selected = len(selected_utxo)
-			num_outputs = len(outputs)
-			best_selected_utxo = selected_utxo
-
-	for utxo in best_selected_utxo:
-		txid, vout = utxo['output'].split(':')
-		best_resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
-
-	return best_resp, None
+	fee_value = total_selected - total_outputs
+	return SelectedInfo(fee_value, raw_transaction, selected_utxo, outputs), None
 
 
 def estimate_fee(estimated_size: int, fee_kb: int) -> int:
