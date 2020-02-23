@@ -14,4 +14,5 @@ if __name__ == '__main__':
 	http_server = WSGIServer((app_host, app_port), app)
 	http_server.serve_forever()
 else:
+	# In the case it is running directly inside of Flask (`flask run`)
 	app = app.app

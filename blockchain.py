@@ -1,33 +1,11 @@
 import os
-import requests
 from cryptos import Bitcoin, sha256, serialize
 from data import TransactionInput, TransactionOutput, TransactionOutputItem, SelectedInfo
 from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst, SelectUtxo
+from utxo import Utxo
 
 min_for_change = int(os.environ['MIN_CHANGE']) if 'MIN_CHANGE' in os.environ else 5430
 bitcoin_is_testnet = bool(os.environ['BITCOIN_TESTNET']) if 'BITCOIN_TESTNET' in os.environ else False
-
-
-def get_unspent_outputs(address: str, confirmations: int = 6, limit: int = 250) -> list:
-	"""
-	Get unspent outputs for the address.
-	:param address: The address to look for.
-	:param confirmations: Minimum number of confirmations.
-	:param limit: Maximum of outputs to return.
-	:return: The unspent outputs.
-	"""
-	url = f"https://blockchain.info/unspent?active={address}&limit={limit}&confirmations={confirmations}"
-	# I'm not worrying about using async methods cause, from what I've understood that's not the main point here.
-	unspent = requests.get(url)
-
-	return [
-		{
-			"output": f"{o['tx_hash_big_endian']}:{o['tx_output_n']}",
-			"value": o['value'],
-			'script': o['script']
-		}
-		for o in unspent.json()['unspent_outputs']
-	]
 
 
 def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (TransactionOutput, str):
@@ -38,8 +16,9 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	:return: Service output or error message.
 	"""
 	try:
-		unspent = get_unspent_outputs(transaction_input.source_address)
+		unspent = Utxo.get_unspent_outputs(transaction_input.source_address)
 	except Exception as e:
+		# It should be logging using the default log
 		print(f"There was a problem trying to get unspent outputs: {e}")
 		return None, "There was a problem trying to get unspent outputs"
 
@@ -66,8 +45,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 
 	resp = TransactionOutput(best_selected.raw, [])
 	for utxo in best_selected.selected:
-		txid, vout = utxo['output'].split(':')
-		resp.inputs += [TransactionOutputItem(txid, vout, utxo['script'], utxo['value'])]
+		resp.inputs += [Utxo.to_tx_output_item(utxo)]
 
 	return resp, None
 
@@ -96,11 +74,9 @@ def create_transaction_with_change(
 
 	selected_utxo, total_selected = selector.select(unspent, total_outputs + estimated_fee)
 	# Create transaction and calculate the fee
-	try:
-		raw_transaction, estimated_size = create_transaction(selected_utxo, outputs)
-	except Exception as e:
-		print(f"There was a problem trying to create the transaction: {e}")
-		return None, "There was a problem trying to create the transaction"
+	(raw_transaction, estimated_size), err = create_transaction(selected_utxo, outputs)
+	if err is not None:
+		return None, err
 	estimated_fee = estimate_fee(estimated_size, fee_kb)
 
 	outputs, change = create_change(
@@ -109,11 +85,9 @@ def create_transaction_with_change(
 	total_outputs += change
 	# If a change was added then it needs to create the transaction again
 	if change != 0:
-		try:
-			raw_transaction, _ = create_transaction(selected_utxo, outputs)
-		except Exception as e:
-			print(f"There was a problem trying to create the transaction: {e}")
-			return None, "There was a problem trying to create the transaction"
+		(raw_transaction, _), err = create_transaction(selected_utxo, outputs)
+		if err is not None:
+			return None, err
 
 	fee_value = total_selected - total_outputs
 	return SelectedInfo(fee_value, raw_transaction, selected_utxo, outputs), None
@@ -150,7 +124,7 @@ def create_change(outputs: dict, total_selected: int, address: str, total_output
 	return outputs, 0
 
 
-def create_transaction(inputs: list, outputs: dict) -> (str, int):
+def create_transaction(inputs: list, outputs: dict) -> ((str, int), str):
 	"""
 	Create a Bitcoin transaction.
 	It uses a simple wallet to sign the transaction and estimate the size of the final transaction.
@@ -158,22 +132,27 @@ def create_transaction(inputs: list, outputs: dict) -> (str, int):
 	:param outputs: Outputs for the transaction.
 	:return: The serialized not signed transaction and the estimated size in bytes.
 	"""
-	c = Bitcoin(testnet=bitcoin_is_testnet)
-	outs = []
-	for outk, outv in outputs.items():
-		outs += [{'value': outv, 'address': outk}]
-	tx = c.mktx(inputs, outs)
-	tx_serialize = serialize(tx)
+	try:
+		c = Bitcoin(testnet=bitcoin_is_testnet)
+		outs = []
+		for outk, outv in outputs.items():
+			outs += [{'value': outv, 'address': outk}]
+		tx = c.mktx(inputs, outs)
+		tx_serialize = serialize(tx)
 
-	# Signing each input to predict the transaction size
-	priv = sha256('a big long brainwallet password')
-	tx_signed = tx.copy()
-	for i in range(len(inputs)):
-		tx_signed = c.sign(tx_signed, i, priv)
+		# Signing each input to predict the transaction size
+		priv = sha256('a big long brainwallet password')
+		tx_signed = tx.copy()
+		for i in range(len(inputs)):
+			tx_signed = c.sign(tx_signed, i, priv)
 
-	# The serialization uses one char per nibble so in order the get the number of bytes it's necessary to
-	# divide the size of the string serialization by 2
-	return str(tx_serialize), len(str(serialize(tx_signed))) // 2
+		# The serialization uses one char per nibble so in order the get the number of bytes it's necessary to
+		# divide the size of the string serialization by 2
+		return (str(tx_serialize), len(str(serialize(tx_signed))) // 2), None
+	except Exception as e:
+		# It should be logging using the default log
+		print(f"There was a problem trying to create the transaction: {e}")
+		return (None, None), "There was a problem trying to create the transaction"
 
 
 def guess_transaction_size(inputs: list, outputs: dict) -> (str, int):
