@@ -25,7 +25,7 @@ def select_utxo_and_create_tx(transaction_input: TransactionInput) -> (Transacti
 	total_unspent = sum([u['value'] for u in unspent])
 
 	best_selected = SelectedInfo(total_unspent, "", list(unspent), dict(transaction_input.outputs))
-	# Checks which selector gives the best results in terms of lower fees
+	# It checks which selector gives the best results in terms of lower fees
 	for selector in [BiggerFirst(), SmallerFirst(), FirstFit(), BestFit()]:
 		outputs = dict(transaction_input.outputs)
 		total_outputs = sum([u for u in outputs.values()])
@@ -105,14 +105,14 @@ def estimate_fee(estimated_size: int, fee_kb: int) -> int:
 
 def create_change(outputs: dict, total_selected: int, address: str, total_outputs: int, fees: int) -> (dict, int):
 	"""
-	Identify the change and create if if necessary.
+	Identify the change and create if necessary.
 	Change the outputs adding the change.
 	:param outputs: Dict with the outputs.
 	:param total_selected: Sum of the selected UTXO.
 	:param address: Address to add the change.
 	:param total_outputs: Total to send in the transaction.
 	:param fees: Value for fees.
-	:return: The value of the change.
+	:return: The outputs and value of the change.
 	"""
 	change = total_selected - total_outputs - fees
 	if change > min_for_change:
@@ -127,7 +127,7 @@ def create_change(outputs: dict, total_selected: int, address: str, total_output
 def create_transaction(inputs: list, outputs: dict) -> ((str, int), str):
 	"""
 	Create a Bitcoin transaction.
-	It uses a simple wallet to sign the transaction and estimate the size of the final transaction.
+	It uses a simple wallet to sign the transaction and estimates the size of the final transaction.
 	:param inputs: Inputs for the transaction.
 	:param outputs: Outputs for the transaction.
 	:return: The serialized not signed transaction and the estimated size in bytes.

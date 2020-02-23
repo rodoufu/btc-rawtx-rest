@@ -69,8 +69,8 @@ class SelectedInfo(object):
 	def __lt__(self, other):
 		"""
 		In the case it finds a smaller fee or less UTXO are used or less no change is necessary
-		:param other:
-		:return:
+		:param other: The other object to compare.
+		:return: True case self is the smaller.
 		"""
 		if self.fee_value < other.fee_value:
 			return True
@@ -83,6 +83,3 @@ class SelectedInfo(object):
 
 	def __str__(self):
 		return json.dumps(self, default=lambda o: o.__dict__)
-
-	def __json__(self):
-		return self.__dict__

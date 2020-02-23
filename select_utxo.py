@@ -1,4 +1,8 @@
 class SelectUtxo(object):
+	"""
+	Generic class for selecting UTXO before creating a transaction.
+	Given a list of transactions and a value, use some criteria to choose the UTXO.
+	"""
 	def select(self, unspent: list, value: int) -> (list, int):
 		raise NotImplementedError("Implement select")
 
@@ -36,7 +40,7 @@ class SmallerFirst(BiggerFirst):
 
 class FirstFit(BiggerFirst):
 	"""
-	Select the first elements that can fulfill the transaction.
+	Select the first elements until it fulfills the transaction.
 	"""
 
 	def __init__(self):
