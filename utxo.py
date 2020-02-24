@@ -6,6 +6,7 @@ from data import TransactionOutputItem
 class Utxo(object):
 	"""
 	Encapsulates the API logic to get the blockchain information.
+	This way if we need to add use another provider we only need to implement a subclass with the logic.
 	"""
 
 	@staticmethod

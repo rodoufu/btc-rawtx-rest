@@ -9,7 +9,6 @@ def create(transaction: dict) -> (dict, int):
 	:param transaction: The information for the transaction.
 	:return: 201 on success, 400 if an error occurs.
 	"""
-
 	for dict_attrib in ['source_address', 'outputs']:
 		if dict_attrib not in transaction or transaction[dict_attrib] is None or len(transaction[dict_attrib]) == 0:
 			msg = f"The {dict_attrib} cannot be empty"

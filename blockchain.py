@@ -1,6 +1,6 @@
 import os
 from cryptos import Bitcoin, sha256, serialize
-from data import TransactionInput, TransactionOutput, TransactionOutputItem, SelectedInfo
+from data import TransactionInput, TransactionOutput, SelectedInfo
 from select_utxo import BiggerFirst, FirstFit, BestFit, SmallerFirst, SelectUtxo
 from utxo import Utxo
 
