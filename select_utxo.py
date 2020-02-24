@@ -60,9 +60,12 @@ class BestFit(SelectUtxo):
 		total = 0
 		resp = []
 		for utxo in unspent:
-			bag_keys = list(bag.keys())
+			bag_keys = sorted(list(bag.keys()))
 			for bagk in bag_keys:
 				new_value = bagk + utxo['value']
+				# For the knapsack problem we can stop after the value is reached but I'm leaving a threshold here
+				if new_value > 1.2 * value:
+					break
 				if new_value not in bag or len(bag[new_value]) > len(bag[bagk]):
 					bag[new_value] = bag[bagk] + [utxo]
 			# It's going to override when it's possible to find it using only one UTXO

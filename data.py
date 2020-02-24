@@ -64,6 +64,7 @@ class SelectedInfo(object):
 		self.fee_value = fee_value
 		self.raw = raw
 		self.selected = selected
+		self.selected_sum = sum([x['value'] for x in self.selected])
 		self.outputs = outputs
 
 	def __lt__(self, other):
@@ -78,6 +79,8 @@ class SelectedInfo(object):
 			if len(self.selected) < len(other.selected):
 				return True
 			if len(self.outputs) < len(other.outputs):
+				return True
+			if self.selected_sum < other.sel.selected_sum:
 				return True
 		return False
 
