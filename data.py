@@ -80,7 +80,7 @@ class SelectedInfo(object):
 				return True
 			if len(self.outputs) < len(other.outputs):
 				return True
-			if self.selected_sum < other.sel.selected_sum:
+			if self.selected_sum < other.selected_sum:
 				return True
 		return False
 
