@@ -1,7 +1,7 @@
 Flask==2.3.2
 connexion==2.6.0
 swagger-ui==0.1.2
-requests==2.31.0
+requests==2.32.0
 cryptos==1.36
 
 pytest==5.3.5
