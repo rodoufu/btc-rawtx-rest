@@ -4,4 +4,4 @@ swagger-ui==0.1.2
 requests==2.33.0
 cryptos==1.36
 
-pytest==5.3.5
+pytest==9.0.3
